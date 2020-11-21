@@ -1,6 +1,7 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+
+import static java.lang.StrictMath.abs;
 
 public class NewtonForm {
     private final List<double[]> dividedTable;
@@ -25,46 +26,91 @@ public class NewtonForm {
         }
     }
 
-    private double[][][] interpolatePolynomial() {
-        double[][][] interpolate = new double[n][n][2];
+    private List<double[]>[] interpolatePolynomial() {
+        List<double[]>[] interpolate = new ArrayList[n];
 
         for (int i = 0; i < n; i++) {
-            interpolate[i][0][0] = 0;
-            interpolate[i][0][1] = dividedTable.get(i)[0];
-            for (int j = 1; j < n; j++)
-                if (j > i) {
-                    interpolate[i][j][0] = 0;
-                    interpolate[i][j][1] = 0;
-                }
-                else {
-                    interpolate[i][j][0] = 1;
-                    interpolate[i][j][1] = -xy[j-1][0];
-                }
+            List<double[]> part = new ArrayList<>();
+            part.add(new double[] {dividedTable.get(i)[0]});
+            for (int j = 0; j < i; j++)
+                part.add(new double[] {1, (xy[j][0] > 0 ? -xy[j][0] : xy[j][0])});
+            interpolate[i] = part;
         }
 
         return interpolate;
     }
 
     public String printInterpolate() {
-        double[][][] interpolate = interpolatePolynomial();
+        List<double[]>[] interpolate = interpolatePolynomial();
         StringBuilder polynomial = new StringBuilder();
 
         for (int i = 0; i < n; i++) {
-            polynomial.append((i != 0) ? " + " : "");
-            double[][] part = interpolate[i];
-            for (int j = 0; j < n; j++) {
-                if (part[j][0] != 0 && part[j][1] != 0) polynomial.append("(x + ").append(String.format("%.3f", part[j][1])).append(")");
-                else if (part[j][0] == 0 && part[j][1] != 0)
-                    polynomial.append(String.format("%.3f", part[j][1]));
-                else if (part[j][0] != 0 && part[j][1] == 0) polynomial.append("x");
+            double constant = interpolate[i].get(0)[0];
+            polynomial.append((i != 0) ? ((constant < 0 ? " - " : " + ") + String.format("%.3f", abs(constant))) : String.format("%.3f", constant));
+            for (int j = 1; j < i + 1; j++) {
+                double[] p = interpolate[i].get(j);
+                constant = p[1];
+                if (constant == 0) polynomial.append("x");
+                else polynomial.append("(x ").append(constant < 0 ? "- " : "+ ").append(String.format("%.3f", abs(constant))).append(")");
             }
         }
 
         return polynomial.toString();
     }
 
-    public void print() {
-        for (double[] f : dividedTable)
-            System.out.println(Arrays.toString(f));
+    public String printSimplify() {
+        List<double[]>[] interpolate = interpolatePolynomial();
+        StringBuilder polynomial = new StringBuilder();
+        double[] simplifies = new double[n];
+        for (int i = 0; i < n; i++) simplifies[i] = 0;
+
+        for (List<double[]> part : interpolate) {
+            double[] s = new double[] {1};
+            for (double[] i : part)
+                s = GeneralFunction.multiplyArray(s, i);
+            GeneralFunction.reverse(s);
+            simplifies = GeneralFunction.additionArray(simplifies, s);
+        }
+        GeneralFunction.reverse(simplifies);
+
+        polynomial.append(String.format("%.3f", simplifies[0])).append("x^").append(n - 1);
+        for (int i = 1; i < n; i++) {
+            polynomial.append(simplifies[i] < 0 ? " - " : " + ").append(String.format("%.3f", abs(simplifies[i])));
+            if (i != n - 1)
+                if (i == n - 2) polynomial.append("x");
+                else polynomial.append("x^").append(n - i - 1);
+        }
+
+        return polynomial.toString();
+    }
+
+    public String toString() {
+        StringBuilder out = new StringBuilder();
+
+        out.append(String.format("%12s", "x"));
+        for (int i = 0; i < n; i++) {
+            StringBuilder fFormat = new StringBuilder("f[");
+            for (int j = 0; j < i; j++) fFormat.append(" ,");
+            fFormat.append(" ]");
+            out.append(String.format("%12s", fFormat.toString()));
+        }
+
+        StringBuilder[] results = new StringBuilder[n*2 - 1];
+        for (int i = 0; i < 2*n - 1; i++) {
+            results[i] = new StringBuilder();
+            if (i % 2 == 0) {
+                results[i].append(String.format("%12.3f", xy[i / 2][0]));
+                results[i].append(String.format("%12.3f", dividedTable.get(0)[i / 2]));
+            } else results[i].append(String.format("%12s", ""));
+        }
+        for (int i = 1; i < n; i++) {
+            double[] col = dividedTable.get(i);
+            for (int j = 0; j < col.length; j++) {
+                results[i + 2*j].append(String.format("%24.3f", dividedTable.get(i)[j]));
+            }
+        }
+
+        for (StringBuilder result : results) out.append("\n" + result.toString());
+        return out.toString();
     }
 }
