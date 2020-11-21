@@ -5,5 +5,6 @@ public class ProgrammingProject4 {
         GeneralForm generalForm = new GeneralForm();
         NewtonForm newtonForm = new NewtonForm(generalForm);
         newtonForm.print();
+        System.out.println(newtonForm.printInterpolate());
     }
 }
