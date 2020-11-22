@@ -3,18 +3,19 @@ import java.util.Scanner;
 
 public class GeneralForm {
     private final double[][] table;
+    private final String fileName;
 
     GeneralForm() throws FileNotFoundException {
         System.out.print("Please choose a filename: ");
         Scanner in = new Scanner(System.in);
+        fileName = in.next();
         TextToDoubleArray textToDoubleArray = new TextToDoubleArray();
-        textToDoubleArray.getFile("inputs/" + in.next());
+        textToDoubleArray.getFile("inputs/" + fileName);
         table = textToDoubleArray.translate();
     }
 
-    public double[][] getTable() {
-        return table;
-    }
+    public double[][] getTable() { return table; }
+    public String getFileName() { return fileName; }
 
     public int length() {
         return table.length;

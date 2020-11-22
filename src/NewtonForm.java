@@ -3,7 +3,7 @@ import java.util.List;
 
 import static java.lang.StrictMath.abs;
 
-public class NewtonForm {
+public class NewtonForm implements PolynomialInterpolation {
     private final List<double[]> dividedTable;
     private final int n;
     private final double[][] xy;
@@ -33,7 +33,7 @@ public class NewtonForm {
             List<double[]> part = new ArrayList<>();
             part.add(new double[] {dividedTable.get(i)[0]});
             for (int j = 0; j < i; j++)
-                part.add(new double[] {1, (xy[j][0] > 0 ? -xy[j][0] : xy[j][0])});
+                part.add(new double[] {1, (-1) * xy[j][0]});
             interpolate[i] = part;
         }
 
@@ -46,15 +46,22 @@ public class NewtonForm {
 
         for (int i = 0; i < n; i++) {
             double constant = interpolate[i].get(0)[0];
-            polynomial.append((i != 0) ? ((constant < 0 ? " - " : " + ") + String.format("%.3f", abs(constant))) : String.format("%.3f", constant));
-            for (int j = 1; j < i + 1; j++) {
-                double[] p = interpolate[i].get(j);
-                constant = p[1];
-                if (constant == 0) polynomial.append("x");
-                else polynomial.append("(x ").append(constant < 0 ? "- " : "+ ").append(String.format("%.3f", abs(constant))).append(")");
+            if (constant != 0) {
+                polynomial.append((i != 0) ?
+                        ((constant < 0 ? " - " : " + ") + (constant != 1 ? String.format("%.3f", abs(constant)) : ""))
+                        : String.format("%.3f", constant));
+                for (int j = 1; j < i + 1; j++) {
+                    double[] p = interpolate[i].get(j);
+                    constant = p[1];
+                    if (constant == 0) polynomial.append("x");
+                    else
+                        polynomial.append("(x ").append(constant < 0 ? "- " : "+ ").append(String.format("%.3f", abs(constant))).append(")");
+                }
             }
         }
 
+        if (polynomial.charAt(0) == ' ')
+            return polynomial.substring(3);
         return polynomial.toString();
     }
 
@@ -64,7 +71,7 @@ public class NewtonForm {
         double[] simplifies = new double[n];
         for (int i = 0; i < n; i++) simplifies[i] = 0;
 
-        for (List<double[]> part : interpolate) {
+        for (List<double[]> part : interpolate) if (part.get(0)[0] != 0){
             double[] s = new double[] {1};
             for (double[] i : part)
                 s = GeneralFunction.multiplyArray(s, i);
@@ -73,14 +80,19 @@ public class NewtonForm {
         }
         GeneralFunction.reverse(simplifies);
 
-        polynomial.append(String.format("%.3f", simplifies[0])).append("x^").append(n - 1);
-        for (int i = 1; i < n; i++) {
-            polynomial.append(simplifies[i] < 0 ? " - " : " + ").append(String.format("%.3f", abs(simplifies[i])));
+        if (simplifies[0] != 0)
+            polynomial.append(simplifies[0] != 1 ? String.format("%.3f", simplifies[0]) : "")
+                    .append("x^")
+                    .append(n - 1);
+        for (int i = 1; i < n; i++) if (simplifies[i] != 0) {
+            polynomial.append(simplifies[i] < 0 ? " - " : " + ").append(simplifies[i] != 1 || i == (n-1) ? String.format("%.3f", abs(simplifies[i])) : "");
             if (i != n - 1)
                 if (i == n - 2) polynomial.append("x");
                 else polynomial.append("x^").append(n - i - 1);
         }
 
+        if (polynomial.charAt(0) == ' ')
+            return polynomial.substring(3);
         return polynomial.toString();
     }
 
@@ -89,10 +101,9 @@ public class NewtonForm {
 
         out.append(String.format("%12s", "x"));
         for (int i = 0; i < n; i++) {
-            StringBuilder fFormat = new StringBuilder("f[");
-            for (int j = 0; j < i; j++) fFormat.append(" ,");
-            fFormat.append(" ]");
-            out.append(String.format("%12s", fFormat.toString()));
+            String fFormat = "f[" + " ,".repeat(i) +
+                    " ]";
+            out.append(String.format("%12s", fFormat));
         }
 
         StringBuilder[] results = new StringBuilder[n*2 - 1];
@@ -110,7 +121,7 @@ public class NewtonForm {
             }
         }
 
-        for (StringBuilder result : results) out.append("\n" + result.toString());
+        for (StringBuilder result : results) out.append("\n").append(result.toString());
         return out.toString();
     }
 }
